@@ -1,0 +1,139 @@
+
+
+role role_A(A:agent,B:agent,C:agent,D:agent,H:hash_func,SND,RCV:channel(dy))
+
+played_by A
+
+def=
+
+	local
+
+		State:nat,Tickt:text,Th:text,Ack:text,Tagcs:text,SIDsn:text,Ch:text
+
+	init
+
+		State := 0
+
+	transition
+
+		2. State=0 /\ RCV(A.SIDsn'.Th'.Tickt'.H(Tickt'.Th'.SIDsn')) =|> State':=1 /\ SND(B.SIDsn')
+
+		4. State=1 /\ RCV(A.Ack') =|> State':=2 /\ Tagcs':=new() /\ Ch':=new() /\ secret(Ch',sec_1,{A,D}) /\ SND(B.SIDsn.H(Ch').Tagcs')
+
+end role
+
+
+
+role role_B(A:agent,B:agent,C:agent,D:agent,H:hash_func,SND,RCV:channel(dy))
+
+played_by B
+
+def=
+
+	local
+
+		State:nat,Tickt:text,Th:text,Tagcs:text,SIDsn:text,Ch:text
+
+	init
+
+		State := 0
+
+	transition
+
+		1. State=0 /\ RCV(B.SIDsn'.Th'.Tickt'.H(Tickt'.Th'.SIDsn')) =|> State':=1 /\ SND(A.SIDsn'.Th'.Tickt'.H(Tickt'.Th'.SIDsn'))
+
+		5. State=1 /\ RCV(B.SIDsn.H(Ch').Tagcs') =|> State':=2 /\ secret(Ch',sec_1,{A,D}) /\ SND(D.SIDsn.H(Ch').Tagcs')
+
+end role
+
+
+
+role role_C(A:agent,B:agent,C:agent,D:agent,H:hash_func,SND,RCV:channel(dy))
+
+played_by C
+
+def=
+
+	local
+
+		State:nat,SIDsn:text,Ack:text
+
+	init
+
+		State := 0
+
+	transition
+
+		3. State=0 /\ RCV(B.SIDsn') =|> State':=1 /\ Ack':=new() /\ SND(A.Ack')
+
+end role
+
+
+
+role role_D(A:agent,B:agent,C:agent,D:agent,H:hash_func,SND,RCV:channel(dy))
+
+played_by D
+
+def=
+
+	local
+
+		State:nat,Tickt:text,Th:text,Tagcs:text,SIDsn:text,Ch:text
+
+	init
+
+		State := 0
+
+	transition
+
+		1. State=0 /\ RCV(start) =|> State':=1 /\ SIDsn':=new() /\ Th':=new() /\ Tickt':=new() /\ SND(B.SIDsn'.Th'.Tickt'.H(Tickt'.Th'.SIDsn'))
+
+		6. State=1 /\ RCV(D.SIDsn.H(Ch').Tagcs') =|> State':=2 /\ secret(Ch',sec_1,{A,D})
+
+end role
+
+
+
+role session1(A:agent,B:agent,C:agent,D:agent,H:hash_func)
+
+def=
+
+	local
+
+		SND4,RCV4,SND3,RCV3,SND2,RCV2,SND1,RCV1:channel(dy)
+
+	composition
+
+		role_D(A,B,C,D,H,SND4,RCV4) /\ role_C(A,B,C,D,H,SND3,RCV3) /\ role_B(A,B,C,D,H,SND2,RCV2) /\ role_A(A,B,C,D,H,SND1,RCV1)
+
+end role
+
+
+
+role environment()
+
+def=
+
+	const
+
+		hash_0:hash_func,ldr1:agent,server:agent,ldr2:agent,sn:agent,const_1:hash_func,sec_1:protocol_id
+
+	intruder_knowledge = {server,ldr2,ldr1,sn}
+
+	composition
+
+		session1(server,ldr2,ldr1,sn,const_1)
+
+end role
+
+
+
+goal
+
+	secrecy_of sec_1
+
+end goal
+
+
+
+environment()

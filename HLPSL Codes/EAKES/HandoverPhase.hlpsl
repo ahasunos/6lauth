@@ -1,0 +1,70 @@
+
+role role_A(A:agent,B:agent,C:agent,D:agent,Kba:symmetric_key,SND,RCV:channel(dy))
+played_by A
+def=
+	local
+		State:nat,IDd:text,Tb:text,Ta:text,Ack:text
+	init
+		State := 0
+	transition
+		3. State=0 /\ RCV(A.{IDd'.Tb'}_Kba) =|> State':=1 /\ Ta':=new() /\ Ack':=new() /\ SND(B.Ack'.Ta')
+end role
+
+role role_B(A:agent,B:agent,C:agent,D:agent,Kb:symmetric_key,Kba:symmetric_key,Kcb:symmetric_key,Kdb:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by B
+def=
+	local
+		State:nat,Td:text,Tickt:text,Ta:text,Ack:text,Nb:text,Tb:text,IDd:text,IDc:text
+	init
+		State := 0
+	transition
+		2. State=0 /\ RCV(B.Tickt'.Td'.H(Tickt'.Td')) =|> State':=1 /\ Tb':=new() /\ IDd':=new() /\ SND(A.{IDd'.Tb'}_Kba)
+		4. State=1 /\ RCV(B.Ack'.Ta') =|> State':=2 /\ Nb':=new() /\ secret(Nb',sec_1,{B,D}) /\ IDc':=new() /\ SND(C.{IDd.IDc'.Tb.H(IDd.IDc'.Tb.Nb')}_Kb.{Nb'}_Kcb.{Nb'}_Kdb)
+end role
+
+role role_C(A:agent,B:agent,C:agent,D:agent,Kcb:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by C
+def=
+	local
+		State:nat,Td:text,Tickt:text,Kdb:symmetric_key,Nb:text,IDc:text,IDd:text,Tb:text,Kb:symmetric_key
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(C.Tickt'.Td'.H(Tickt'.Td')) =|> State':=1 /\ SND(B.Tickt'.Td'.H(Tickt'.Td'))
+		5. State=1 /\ RCV(C.{IDd'.IDc'.Tb'.H(IDd'.IDc'.Tb'.Nb')}_Kb'.{Nb'}_Kcb.{Nb'}_Kdb') =|> State':=2 /\ secret(Nb',sec_1,{B,D}) /\ SND(D.{IDd'.IDc'.Tb'.H(IDd'.IDc'.Tb'.Nb')}_Kb'.{Nb'}_Kdb')
+end role
+
+role role_D(A:agent,B:agent,C:agent,D:agent,Kdb:symmetric_key,Kb:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by D
+def=
+	local
+		State:nat,Td:text,Tickt:text,Nb:text,IDc:text,IDd:text,Tb:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(start) =|> State':=1 /\ Td':=new() /\ Tickt':=new() /\ SND(C.Tickt'.Td'.H(Tickt'.Td'))
+		6. State=1 /\ RCV(D.{IDd'.IDc'.Tb'.H(IDd'.IDc'.Tb'.Nb')}_Kb.{Nb'}_Kdb) =|> State':=2 /\ secret(Nb',sec_1,{B,D})
+end role
+
+role session1(Kcb:symmetric_key,Kba:symmetric_key,A:agent,B:agent,C:agent,D:agent,Kdb:symmetric_key,Kb:symmetric_key,H:hash_func)
+def=
+	local
+		SND4,RCV4,SND3,RCV3,SND2,RCV2,SND1,RCV1:channel(dy)
+	composition
+		role_D(A,B,C,D,Kdb,Kb,H,SND4,RCV4) /\ role_C(A,B,C,D,Kcb,H,SND3,RCV3) /\ role_B(A,B,C,D,Kb,Kba,Kcb,Kdb,H,SND2,RCV2) /\ role_A(A,B,C,D,Kba,SND1,RCV1)
+end role
+
+role environment()
+def=
+	const
+		hash_0:hash_func,kdb:symmetric_key,lrNew:agent,lrOld:agent,kcb:symmetric_key,kba:symmetric_key,server:agent,lh:agent,kb:symmetric_key,const_1:hash_func,sec_1:protocol_id
+	intruder_knowledge = {server,lrOld,lrNew,lh}
+	composition
+		session1(kcb,kba,lrOld,server,lrNew,lh,kdb,kb,const_1)
+end role
+
+goal
+	secrecy_of sec_1
+end goal
+
+environment()
