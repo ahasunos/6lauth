@@ -1,0 +1,71 @@
+
+role role_A(A:agent,B:agent,C:agent,D:agent,H:hash_func,Klarcs:symmetric_key,Kcs:symmetric_key,Ksncs:symmetric_key,Ksn:symmetric_key,SND,RCV:channel(dy))
+played_by A
+def=
+	local
+		State:nat,SIDlar:text,Tagsn:text,Z:text,SIDldr:text,Tsn:text,C1:text,R1:text,Tlar:text,R2:text,C2:text,Texp:text,Tcs:text,X1:text,Tagcs:text
+	init
+		State := 0
+	transition
+		3. State=0 /\ RCV(A.SIDlar'.Tlar'.SIDldr'.Tsn'.Z'.{C1'}_Ksncs.Tagsn'.R1'.H(SIDldr'.Tsn'.Z'.{C1'}_Ksncs.Tagsn'.R1'.SIDlar'.Tlar'.Klarcs)) =|> State':=1 /\ R2':=new() /\ Tagcs':=new() /\ C2':=new() /\ secret(C2',sec_2,{A,D}) /\ X1':=new() /\ Texp':=new() /\ Tcs':=new() /\ SND(B.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2')
+end role
+
+role role_B(A:agent,B:agent,C:agent,D:agent,H:hash_func,Klarcs:symmetric_key,SND,RCV:channel(dy))
+played_by B
+def=
+	local
+		State:nat,SIDlar:text,Tagsn:text,Z:text,SIDldr:text,Tsn:text,C1:text,Ksncs:symmetric_key,R1:text,Tlar:text,R2:text,C2:text,Texp:text,Tcs:text,X1:text,Tagcs:text
+	init
+		State := 0
+	transition
+		2. State=0 /\ RCV(B.SIDldr'.Tsn'.Z'.{C1'}_Ksncs'.Tagsn'.R1') =|> State':=1 /\ Tlar':=new() /\ SIDlar':=new() /\ SND(A.SIDlar'.Tlar'.SIDldr'.Tsn'.Z'.{C1'}_Ksncs'.Tagsn'.R1'.H(SIDldr'.Tsn'.Z'.{C1'}_Ksncs'.Tagsn'.R1'.SIDlar'.Tlar'.Klarcs))
+		4. State=1 /\ RCV(B.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2') =|> State':=2 /\ secret(C2',sec_2,{A,D}) /\ SND(C.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2')
+end role
+
+role role_C(A:agent,B:agent,C:agent,D:agent,H:hash_func,SND,RCV:channel(dy))
+played_by C
+def=
+	local
+		State:nat,R1:text,Ksncs:symmetric_key,C1:text,Tsn:text,SIDldr:text,Z:text,Tagsn:text,R2:text,C2:text,Texp:text,Tcs:text,X1:text,Tagcs:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(C.Tsn'.Z'.{C1'}_Ksncs'.Tagsn'.R1') =|> State':=1 /\ SIDldr':=new() /\ SND(B.SIDldr'.Tsn'.Z'.{C1'}_Ksncs'.Tagsn'.R1')
+		5. State=1 /\ RCV(C.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2') =|> State':=2 /\ secret(C2',sec_2,{A,D}) /\ SND(D.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2')
+end role
+
+role role_D(A:agent,B:agent,C:agent,D:agent,H:hash_func,Ksncs:symmetric_key,Ksn:symmetric_key,SND,RCV:channel(dy))
+played_by D
+def=
+	local
+		State:nat,R1:text,C1:text,Tsn:text,Z:text,Tagsn:text,R2:text,C2:text,Texp:text,Tcs:text,X1:text,Tagcs:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(start) =|> State':=1 /\ R1':=new() /\ Tagsn':=new() /\ C1':=new() /\ Z':=new() /\ Tsn':=new() /\ SND(C.Tsn'.Z'.{C1'}_Ksncs.Tagsn'.R1')
+		6. State=1 /\ RCV(D.Tcs'.Texp'.X1'.H(C2').Tagcs'.R2') =|> State':=2 /\ secret(C2',sec_2,{A,D})
+end role
+
+role session1(Kcs:symmetric_key,Klarcs:symmetric_key,A:agent,B:agent,C:agent,D:agent,H:hash_func,Ksncs:symmetric_key,Ksn:symmetric_key)
+def=
+	local
+		SND4,RCV4,SND3,RCV3,SND2,RCV2,SND1,RCV1:channel(dy)
+	composition
+		role_D(A,B,C,D,H,Ksncs,Ksn,SND4,RCV4) /\ role_C(A,B,C,D,H,SND3,RCV3) /\ role_B(A,B,C,D,H,Klarcs,SND2,RCV2) /\ role_A(A,B,C,D,H,Klarcs,Kcs,Ksncs,Ksn,SND1,RCV1)
+end role
+
+role environment()
+def=
+	const
+		hash_0:hash_func,ksncs:symmetric_key,ldr:agent,server:agent,kcs:symmetric_key,klarcs:symmetric_key,lar:agent,sn:agent,const_1:hash_func,ksn:symmetric_key,auth_1:protocol_id,sec_2:protocol_id
+	intruder_knowledge = {server,ldr,lar,sn}
+	composition
+		session1(kcs,klarcs,server,lar,ldr,sn,const_1,ksncs,ksn)
+end role
+
+goal
+	authentication_on auth_1
+	secrecy_of sec_2
+end goal
+
+environment()

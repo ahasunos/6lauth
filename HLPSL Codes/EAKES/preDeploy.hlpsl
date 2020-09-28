@@ -1,0 +1,73 @@
+% --------------------------------------------------------------------------------
+% Predeployment Phase of EAKES6Lo 
+%	Sonu Saha, Daisy Baruah, Amit Deka
+% 	(54,08,04)
+% Note : A is Server and B is node.
+% --------------------------------------------------------------------------------
+
+
+% Server role
+% --------------------------------------------------------------------------------
+
+role role_A(A:agent,B:agent,Ka:public_key,IDa:text,IDb:text,SND,RCV:channel(dy))
+played_by A
+def=
+	local
+		State:nat,Kb:public_key
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(A.IDb.Kb') =|> State':=1 /\ SND(B.IDa.Ka)
+end role
+
+%--------------------------------------------------------------------------------
+% Node role
+% --------------------------------------------------------------------------------
+
+role role_B(A:agent,B:agent,Kb:public_key,IDb:text,SND,RCV:channel(dy))
+played_by B
+def=
+	local
+		State:nat,Ka:public_key,IDa:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(start) =|> State':=1 /\ SND(A.IDb.Kb)
+		2. State=1 /\ RCV(B.IDa'.Ka') =|> State':=2
+end role
+
+
+%--------------------------------------------------------------------------------
+% Session role
+% --------------------------------------------------------------------------------
+
+role session1(IDa:text,Ka:public_key,A:agent,B:agent,Kb:public_key,IDb:text)
+def=
+	local
+		SND2,RCV2,SND1,RCV1:channel(dy)
+	composition
+		role_B(A,B,Kb,IDb,SND2,RCV2) /\ role_A(A,B,Ka,IDa,IDb,SND1,RCV1)
+end role
+
+%--------------------------------------------------------------------------------
+% Environment role
+% --------------------------------------------------------------------------------
+
+role environment()
+def=
+	const
+		hash_0:hash_func,node:agent,ka:public_key,const_1:text,server:agent,kb:public_key,const_1:text,auth_1:protocol_id
+	intruder_knowledge = {server,node}
+	composition
+		session1(const_1,ka,server,node,kb,const_1)
+end role
+
+%--------------------------------------------------------------------------------
+% Goals
+% --------------------------------------------------------------------------------
+
+goal
+	authentication_on auth_1
+end goal
+
+environment()

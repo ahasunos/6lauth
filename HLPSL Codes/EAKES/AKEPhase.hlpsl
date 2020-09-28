@@ -1,0 +1,70 @@
+
+role role_A(A:agent,B:agent,C:agent,D:agent,Kda:symmetric_key,Kd:symmetric_key,Kb:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by A
+def=
+	local
+		State:nat,Tb:text,Mac1:text,IDc:text,IDd:text,Td:text,Nd:text,Tickt:text
+	init
+		State := 0
+	transition
+		3. State=0 /\ RCV(A.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd.{Tb'.Mac1'}_Kb) =|> State':=1 /\ Tickt':=new() /\ SND(B.{Tickt'}_Kda.H(Tickt'.Nd'))
+end role
+
+role role_B(A:agent,B:agent,C:agent,D:agent,Kb:symmetric_key,Kda:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by B
+def=
+	local
+		State:nat,Tb:text,Mac1:text,IDc:text,IDd:text,Td:text,Kd:symmetric_key,Nd:text,Tickt:text
+	init
+		State := 0
+	transition
+		2. State=0 /\ RCV(B.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd') =|> State':=1 /\ Mac1':=new() /\ Tb':=new() /\ SND(A.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd'.{Tb'.Mac1'}_Kb)
+		4. State=1 /\ RCV(B.{Tickt'}_Kda.H(Tickt'.Nd)) =|> State':=2 /\ SND(C.{Tickt'}_Kda.H(Tickt'.Nd))
+end role
+
+role role_C(A:agent,B:agent,C:agent,D:agent,Kda:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by C
+def=
+	local
+		State:nat,Kd:symmetric_key,Td:text,IDd:text,IDc:text,Nd:text,Tickt:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(C.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd') =|> State':=1 /\ SND(B.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd')
+		5. State=1 /\ RCV(C.{Tickt'}_Kda.H(Tickt'.Nd)) =|> State':=2 /\ SND(D.{Tickt'}_Kda.H(Tickt'.Nd))
+end role
+
+role role_D(A:agent,B:agent,C:agent,D:agent,Kda:symmetric_key,Kd:symmetric_key,H:hash_func,SND,RCV:channel(dy))
+played_by D
+def=
+	local
+		State:nat,Td:text,IDd:text,IDc:text,Nd:text,Tickt:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(start) =|> State':=1 /\ Nd':=new() /\ Td':=new() /\ IDc':=new() /\ IDd':=new() /\ SND(C.{IDd'.IDc'.Td'.{Nd'}_Kda}_Kd)
+		6. State=1 /\ RCV(D.{Tickt'}_Kda.H(Tickt'.Nd)) =|> State':=2
+end role
+
+role session1(Kb:symmetric_key,A:agent,B:agent,C:agent,D:agent,Kda:symmetric_key,Kd:symmetric_key,H:hash_func)
+def=
+	local
+		SND4,RCV4,SND3,RCV3,SND2,RCV2,SND1,RCV1:channel(dy)
+	composition
+		role_D(A,B,C,D,Kda,Kd,H,SND4,RCV4) /\ role_C(A,B,C,D,Kda,H,SND3,RCV3) /\ role_B(A,B,C,D,Kb,Kda,H,SND2,RCV2) /\ role_A(A,B,C,D,Kda,Kd,Kb,H,SND1,RCV1)
+end role
+
+role environment()
+def=
+	const
+		hash_0:hash_func,kda:symmetric_key,lr:agent,server:agent,kb:symmetric_key,ler:agent,lh:agent,kd:symmetric_key,const_1:hash_func,sec_1:protocol_id
+	intruder_knowledge = {server,ler,lr,lh}
+	composition
+		session1(kb,server,ler,lr,lh,kda,kd,const_1)
+end role
+
+goal
+	secrecy_of sec_1
+end goal
+
+environment()

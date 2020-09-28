@@ -1,0 +1,97 @@
+% --------------------------------------------------------------------------------
+% Authentication Part of SAKES 
+%	Sonu Saha, Daisy Baruah, Amit Deka
+% 	(54,08,04)
+% Note : A is ED, B is LR and C is LBR.
+% --------------------------------------------------------------------------------
+
+% 6ED role
+% --------------------------------------------------------------------------------
+
+role role_A(A:agent,B:agent,C:agent,Kac:symmetric_key,Kab:symmetric_key,SND,RCV:channel(dy))
+played_by A
+def=
+	local
+		State:nat,Na:text,Nb:text,Ciptext:text,IDb:text,Nc:text
+		%Here, Ciptext is IDa,IDb,IDc,Na
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(start) =|> State':=1 /\ Na':=new() /\ SND(B.Na')
+		2. State=1 /\ RCV(A.Nb') =|> State':=2 /\ Ciptext':=new() /\ SND(B.{Ciptext'}_Kac)
+		6. State=2 /\ RCV(A.{IDb'.Nc'}_Kac) =|> State':=3
+end role
+
+
+%--------------------------------------------------------------------------------
+
+% 6LR role
+% --------------------------------------------------------------------------------
+
+role role_B(A:agent,B:agent,C:agent,Kbc:symmetric_key,Kab:symmetric_key,SND,RCV:channel(dy))
+played_by B
+def=
+	local
+		State:nat,Na:text,Nb:text,Ciptext:text,Kac:symmetric_key,Kc:symmetric_key,Nc:text,IDc:text,IDa:text
+	init
+		State := 0
+	transition
+		1. State=0 /\ RCV(B.Na') =|> State':=1 /\ Nb':=new() /\ SND(A.Nb')
+		3. State=1 /\ RCV(B.{Ciptext'}_Kac') =|> State':=2 /\ SND(C.{Ciptext'}_Kac'.Nb)
+		5. State=2 /\ RCV(B.Nc'.{IDa'.IDc'}_Kc'.{Kc'}_Kbc) =|> State':=3
+end role
+
+
+%--------------------------------------------------------------------------------
+
+% 6LBR-AM role
+% --------------------------------------------------------------------------------
+
+role role_C(A:agent,B:agent,C:agent,Kac:symmetric_key,Kbc:symmetric_key,SND,RCV:channel(dy))
+played_by C
+def=
+	local
+		State:nat,Nb:text,Ciptext:text,Kc:symmetric_key,IDc:text,IDa:text,IDb:text,Nc:text
+	init
+		State := 0
+	transition
+		4. State=0 /\ RCV(C.{Ciptext'}_Kac.Nb') =|> State':=1 /\ Kc':=new() /\ IDc':=new() /\ IDa':=new() /\ Nc':=new() /\ SND(B.Nc'.{IDa'.IDc'}_Kc'.{Kc'}_Kbc) /\ IDb':=new() /\ SND(A.{IDb'.Nc'}_Kac)
+end role
+
+%--------------------------------------------------------------------------------
+
+% Session role
+% --------------------------------------------------------------------------------
+
+role session1(Kab:symmetric_key,A:agent,B:agent,C:agent,Kac:symmetric_key,Kbc:symmetric_key)
+def=
+	local
+		SND3,RCV3,SND2,RCV2,SND1,RCV1:channel(dy)
+	composition
+		role_C(A,B,C,Kac,Kbc,SND3,RCV3) /\ role_B(A,B,C,Kbc,Kab,SND2,RCV2) /\ role_A(A,B,C,Kac,Kab,SND1,RCV1)
+end role
+
+%--------------------------------------------------------------------------------
+
+% Environment role
+% --------------------------------------------------------------------------------
+
+role environment()
+def=
+	const
+		hash_0:hash_func,kac:symmetric_key,lr:agent,kab:symmetric_key,ed:agent,lbr:agent,kbc:symmetric_key,auth_1:protocol_id
+	intruder_knowledge = {ed,lr,lbr}
+	composition
+		session1(kab,ed,lr,lbr,kac,kbc)
+end role
+
+%--------------------------------------------------------------------------------
+
+% Goals
+% --------------------------------------------------------------------------------
+
+goal
+	authentication_on auth_1
+end goal
+
+environment()
