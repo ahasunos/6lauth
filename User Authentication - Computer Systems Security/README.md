@@ -1,4 +1,4 @@
 # Computer Systems Security 
 ## MITOPENCOURSEWARE
-### User Authentication - Chapter 17
+### User Authentication - Lecture 17
 
